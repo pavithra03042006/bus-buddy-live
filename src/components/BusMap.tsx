@@ -180,6 +180,11 @@ export default function BusMap({ onBusSelect }: BusMapProps) {
     // Add zoom control to bottom right
     mapRef.current.zoomControl.setPosition('bottomright');
 
+    // Prevent map clicks from closing the booking details panel
+    mapRef.current.on('click', (e: L.LeafletMouseEvent) => {
+      L.DomEvent.stopPropagation(e.originalEvent);
+    });
+
     return () => {
       if (mapRef.current) {
         mapRef.current.remove();
