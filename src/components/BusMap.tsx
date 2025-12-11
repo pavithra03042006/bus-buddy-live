@@ -157,6 +157,7 @@ export default function BusMap({ onBusSelect }: BusMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
+  const [mapReady, setMapReady] = React.useState(false);
 
   // Initialize map
   useEffect(() => {
@@ -165,30 +166,38 @@ export default function BusMap({ onBusSelect }: BusMapProps) {
     // Tirunelveli center coordinates
     const center: [number, number] = [8.7139, 77.7567];
 
-    mapRef.current = L.map(mapContainerRef.current, {
+    const map = L.map(mapContainerRef.current, {
       center,
       zoom: 14,
       zoomControl: true,
     });
 
+    mapRef.current = map;
+
     // Use a cleaner map tile
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 19,
-    }).addTo(mapRef.current);
+    }).addTo(map);
 
     // Add zoom control to bottom right
-    mapRef.current.zoomControl.setPosition('bottomright');
+    map.zoomControl.setPosition('bottomright');
 
     // Prevent map clicks from closing the booking details panel
-    mapRef.current.on('click', (e: L.LeafletMouseEvent) => {
+    map.on('click', (e: L.LeafletMouseEvent) => {
       L.DomEvent.stopPropagation(e.originalEvent);
+    });
+
+    // Mark map as ready after it's fully initialized
+    map.whenReady(() => {
+      setMapReady(true);
     });
 
     return () => {
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
+        setMapReady(false);
       }
     };
   }, []);
@@ -248,10 +257,12 @@ export default function BusMap({ onBusSelect }: BusMapProps) {
     });
   }, [buses, selectedBus, setSelectedBus, onBusSelect]);
 
-  // Update markers when buses or selection changes
+  // Update markers when buses or selection changes (only after map is ready)
   useEffect(() => {
-    updateMarkers();
-  }, [updateMarkers, lastUpdate]);
+    if (mapReady) {
+      updateMarkers();
+    }
+  }, [updateMarkers, lastUpdate, mapReady]);
 
   // Fly to selected bus
   useEffect(() => {
