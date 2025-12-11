@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { useBus } from '@/contexts/BusContext';
 import { Bus } from '@/types/bus';
 import { Button } from '@/components/ui/button';
@@ -38,14 +37,9 @@ export default function BusDetailsPanel({ bus, onClose, onBookTicket }: BusDetai
   }[status]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 20 }}
-      className="glass-panel rounded-2xl overflow-hidden"
-    >
+    <div className="rounded-xl overflow-hidden border border-border">
       {/* Header */}
-      <div className={cn('p-5 text-white', getStatusStyles(bus.status))}>
+      <div className={cn('p-4 text-white', getStatusStyles(bus.status))}>
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
@@ -184,6 +178,6 @@ export default function BusDetailsPanel({ bus, onClose, onBookTicket }: BusDetai
           </Button>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }

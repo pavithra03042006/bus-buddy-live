@@ -118,7 +118,7 @@ export default function Dashboard() {
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - Bus List */}
         <AnimatePresence>
           {(isSidebarOpen || activeView === 'list') && (
@@ -128,7 +128,7 @@ export default function Dashboard() {
               exit={{ x: -320, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               className={cn(
-                'w-full lg:w-96 bg-card/95 backdrop-blur-xl border-r border-border overflow-hidden flex flex-col',
+                'w-full lg:w-80 bg-card/95 backdrop-blur-xl border-r border-border overflow-hidden flex flex-col',
                 'absolute lg:relative inset-0 z-10',
                 activeView === 'map' && 'hidden lg:flex'
               )}
@@ -151,26 +151,8 @@ export default function Dashboard() {
         )}>
           <BusMap />
 
-          {/* Selected Bus Details Panel */}
-          <AnimatePresence>
-            {selectedBus && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
-                className="absolute bottom-4 left-4 right-4 lg:right-auto lg:w-96 z-10"
-              >
-                <BusDetailsPanel
-                  bus={selectedBus}
-                  onClose={() => setSelectedBus(null)}
-                  onBookTicket={handleBookTicket}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           {/* Map Legend */}
-          <div className="absolute top-4 right-4 glass-panel rounded-xl p-4 z-10">
+          <div className="absolute top-4 right-4 bg-card/90 backdrop-blur-sm rounded-xl p-4 z-10 border border-border">
             <h3 className="text-sm font-medium text-foreground mb-3">Status Legend</h3>
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm">
@@ -191,7 +173,7 @@ export default function Dashboard() {
           </div>
 
           {/* Real-time Update Indicator */}
-          <div className="absolute top-4 left-4 glass-panel rounded-lg px-3 py-2 z-10">
+          <div className="absolute top-4 left-4 bg-card/90 backdrop-blur-sm rounded-lg px-3 py-2 z-10 border border-border">
             <div className="flex items-center gap-2">
               <div className={cn(
                 "w-2 h-2 rounded-full",
@@ -203,6 +185,41 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* Right Panel - Bus Details (Fixed, Non-overlapping) */}
+        <AnimatePresence>
+          {selectedBus && (
+            <motion.aside
+              initial={{ x: 320, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 320, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="w-full lg:w-96 bg-card border-l border-border overflow-y-auto flex flex-col absolute lg:relative inset-0 lg:inset-auto z-20 lg:z-0"
+            >
+              <div className="p-4 border-b border-border flex items-center justify-between">
+                <div>
+                  <h2 className="font-semibold text-foreground">Bus Details</h2>
+                  <p className="text-sm text-muted-foreground">View info and book tickets</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSelectedBus(null)}
+                  className="lg:hidden"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <div className="flex-1 p-4">
+                <BusDetailsPanel
+                  bus={selectedBus}
+                  onClose={() => setSelectedBus(null)}
+                  onBookTicket={handleBookTicket}
+                />
+              </div>
+            </motion.aside>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Booking Modal */}
