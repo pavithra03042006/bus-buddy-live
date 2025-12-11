@@ -8,12 +8,12 @@ import BusDetailsPanel from '@/components/BusDetailsPanel';
 import BookingModal from '@/components/BookingModal';
 import MyBookings from '@/components/MyBookings';
 import { Button } from '@/components/ui/button';
-import { Bus as BusIcon, LogOut, Ticket, Menu, X, MapPin, List } from 'lucide-react';
+import { Bus as BusIcon, LogOut, Ticket, Menu, X, MapPin, List, Radio, CircleOff, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
-  const { selectedBus, setSelectedBus } = useBus();
+  const { selectedBus, setSelectedBus, isTracking, toggleTracking, lastUpdate } = useBus();
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [isMyBookingsOpen, setIsMyBookingsOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -45,6 +45,36 @@ export default function Dashboard() {
               <p className="text-xs text-muted-foreground">Real-time tracking</p>
             </div>
           </div>
+        </div>
+
+        {/* Live Tracking Indicator */}
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted">
+            <div className={cn(
+              "w-2 h-2 rounded-full",
+              isTracking ? "bg-status-active animate-pulse" : "bg-muted-foreground"
+            )} />
+            <span className="text-xs font-medium text-muted-foreground">
+              {isTracking ? 'Live Tracking' : 'Tracking Paused'}
+            </span>
+            <Clock className="w-3 h-3 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">
+              {lastUpdate.toLocaleTimeString()}
+            </span>
+          </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleTracking}
+            className={cn(
+              "gap-2",
+              isTracking ? "text-status-active" : "text-muted-foreground"
+            )}
+          >
+            {isTracking ? <Radio className="w-4 h-4" /> : <CircleOff className="w-4 h-4" />}
+            <span className="hidden sm:inline">{isTracking ? 'Live' : 'Paused'}</span>
+          </Button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -144,8 +174,10 @@ export default function Dashboard() {
             <h3 className="text-sm font-medium text-foreground mb-3">Status Legend</h3>
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm">
-                <div className="w-3 h-3 rounded-full bg-status-active" />
-                <span className="text-muted-foreground">Active</span>
+                <div className="w-3 h-3 rounded-full bg-status-active relative">
+                  <div className="absolute inset-0 rounded-full bg-status-active animate-ping opacity-50" />
+                </div>
+                <span className="text-muted-foreground">Active (Live)</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <div className="w-3 h-3 rounded-full bg-status-unavailable" />
@@ -155,6 +187,19 @@ export default function Dashboard() {
                 <div className="w-3 h-3 rounded-full bg-status-substitute" />
                 <span className="text-muted-foreground">Substitute</span>
               </div>
+            </div>
+          </div>
+
+          {/* Real-time Update Indicator */}
+          <div className="absolute top-4 left-4 glass-panel rounded-lg px-3 py-2 z-10">
+            <div className="flex items-center gap-2">
+              <div className={cn(
+                "w-2 h-2 rounded-full",
+                isTracking ? "bg-status-active animate-pulse" : "bg-muted-foreground"
+              )} />
+              <span className="text-xs font-medium">
+                {isTracking ? 'GPS Active' : 'GPS Paused'}
+              </span>
             </div>
           </div>
         </div>

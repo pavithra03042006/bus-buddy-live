@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Bus, Booking } from '@/types/bus';
 import { initialBuses, simulateBusMovement } from '@/data/busData';
 
@@ -6,12 +6,15 @@ interface BusContextType {
   buses: Bus[];
   bookings: Booking[];
   selectedBus: Bus | null;
+  isTracking: boolean;
+  lastUpdate: Date;
   setSelectedBus: (bus: Bus | null) => void;
   updateBusLocation: (busId: string, lat: number, lng: number, placeName: string) => void;
   updateBusStatus: (busId: string, status: Bus['status']) => void;
   createBooking: (booking: Omit<Booking, 'id' | 'bookedAt'>) => Booking;
   cancelBooking: (bookingId: string) => void;
   getUserBookings: (userId: string) => Booking[];
+  toggleTracking: () => void;
 }
 
 const BusContext = createContext<BusContextType | undefined>(undefined);
@@ -20,17 +23,60 @@ export function BusProvider({ children }: { children: React.ReactNode }) {
   const [buses, setBuses] = useState<Bus[]>(initialBuses);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [selectedBus, setSelectedBus] = useState<Bus | null>(null);
+  const [isTracking, setIsTracking] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState(new Date());
+  const trackingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Simulate real-time bus movement
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setBuses((prevBuses) =>
-        prevBuses.map((bus) => simulateBusMovement(bus))
-      );
-    }, 5000); // Update every 5 seconds
+  // Real-time GPS simulation with more frequent updates
+  const startTracking = useCallback(() => {
+    if (trackingIntervalRef.current) {
+      clearInterval(trackingIntervalRef.current);
+    }
 
-    return () => clearInterval(interval);
+    trackingIntervalRef.current = setInterval(() => {
+      setBuses((prevBuses) => {
+        const updatedBuses = prevBuses.map((bus) => simulateBusMovement(bus));
+        setLastUpdate(new Date());
+        return updatedBuses;
+      });
+    }, 2000); // Update every 2 seconds for smooth tracking
   }, []);
+
+  const stopTracking = useCallback(() => {
+    if (trackingIntervalRef.current) {
+      clearInterval(trackingIntervalRef.current);
+      trackingIntervalRef.current = null;
+    }
+  }, []);
+
+  const toggleTracking = useCallback(() => {
+    setIsTracking((prev) => {
+      if (prev) {
+        stopTracking();
+      } else {
+        startTracking();
+      }
+      return !prev;
+    });
+  }, [startTracking, stopTracking]);
+
+  // Start tracking on mount
+  useEffect(() => {
+    if (isTracking) {
+      startTracking();
+    }
+    return () => stopTracking();
+  }, [isTracking, startTracking, stopTracking]);
+
+  // Update selected bus when buses update
+  useEffect(() => {
+    if (selectedBus) {
+      const updatedBus = buses.find((b) => b.id === selectedBus.id);
+      if (updatedBus) {
+        setSelectedBus(updatedBus);
+      }
+    }
+  }, [buses, selectedBus?.id]);
 
   const updateBusLocation = useCallback(
     (busId: string, lat: number, lng: number, placeName: string) => {
@@ -49,6 +95,7 @@ export function BusProvider({ children }: { children: React.ReactNode }) {
             : bus
         )
       );
+      setLastUpdate(new Date());
     },
     []
   );
@@ -100,12 +147,15 @@ export function BusProvider({ children }: { children: React.ReactNode }) {
         buses,
         bookings,
         selectedBus,
+        isTracking,
+        lastUpdate,
         setSelectedBus,
         updateBusLocation,
         updateBusStatus,
         createBooking,
         cancelBooking,
         getUserBookings,
+        toggleTracking,
       }}
     >
       {children}
