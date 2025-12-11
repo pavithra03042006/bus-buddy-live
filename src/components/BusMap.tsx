@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -21,7 +21,7 @@ const createBusIcon = (status: Bus['status']) => {
   return L.divIcon({
     className: 'custom-bus-marker',
     html: `
-      <div class="bus-icon ${status}" style="background: ${color}; position: relative;">
+      <div class="bus-icon ${status}" style="background: ${color}; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.3); border: 2px solid white;">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M8 6v6"/>
           <path d="M15 6v6"/>
@@ -31,7 +31,6 @@ const createBusIcon = (status: Bus['status']) => {
           <path d="M9 18h5"/>
           <circle cx="16" cy="18" r="2"/>
         </svg>
-        ${status === 'active' ? '<div class="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-ping"></div>' : ''}
       </div>
     `,
     iconSize: [40, 40],
@@ -40,7 +39,7 @@ const createBusIcon = (status: Bus['status']) => {
   });
 };
 
-// Component to handle map center changes
+// Component to handle map center changes - must be inside MapContainer
 function MapController({ selectedBus }: { selectedBus: Bus | null }) {
   const map = useMap();
 
@@ -53,6 +52,62 @@ function MapController({ selectedBus }: { selectedBus: Bus | null }) {
   }, [selectedBus, map]);
 
   return null;
+}
+
+// Bus Markers component - must be inside MapContainer
+function BusMarkers({ buses, onBusClick }: { buses: Bus[]; onBusClick: (bus: Bus) => void }) {
+  return (
+    <>
+      {buses.map((bus) => (
+        <Marker
+          key={bus.id}
+          position={[bus.currentLocation.lat, bus.currentLocation.lng]}
+          icon={createBusIcon(bus.status)}
+          eventHandlers={{
+            click: () => onBusClick(bus),
+          }}
+        >
+          <Popup>
+            <div className="p-2 min-w-[200px]">
+              <div className="flex items-center gap-2 mb-2">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    bus.status === 'active'
+                      ? 'bg-green-500'
+                      : bus.status === 'unavailable'
+                      ? 'bg-red-500'
+                      : 'bg-orange-500'
+                  }`}
+                >
+                  <BusIcon className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">{bus.busNumber}</h3>
+                  <span className="text-xs text-gray-500">{bus.type}</span>
+                </div>
+              </div>
+              
+              <div className="space-y-1 text-sm">
+                <div className="flex items-center gap-1.5 text-gray-600">
+                  <MapPin className="w-3 h-3" />
+                  <span>{bus.currentLocation.placeName}</span>
+                </div>
+                <p>
+                  <span className="text-gray-500">Route:</span> {bus.route.from} → {bus.route.to}
+                </p>
+                <p>
+                  <span className="text-gray-500">Driver:</span> {bus.driver.name}
+                </p>
+                <p className="text-xs text-gray-400 mt-2">
+                  Updated: {bus.currentLocation.timestamp.toLocaleTimeString()}
+                </p>
+              </div>
+            </div>
+          </Popup>
+        </Marker>
+      ))}
+    </>
+  );
 }
 
 interface BusMapProps {
@@ -81,57 +136,8 @@ export default function BusMap({ onBusSelect }: BusMapProps) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      
       <MapController selectedBus={selectedBus} />
-
-      {buses.map((bus) => (
-        <Marker
-          key={bus.id}
-          position={[bus.currentLocation.lat, bus.currentLocation.lng]}
-          icon={createBusIcon(bus.status)}
-          eventHandlers={{
-            click: () => handleBusClick(bus),
-          }}
-        >
-          <Popup>
-            <div className="p-2 min-w-[200px]">
-              <div className="flex items-center gap-2 mb-2">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    bus.status === 'active'
-                      ? 'bg-status-active'
-                      : bus.status === 'unavailable'
-                      ? 'bg-status-unavailable'
-                      : 'bg-status-substitute'
-                  }`}
-                >
-                  <BusIcon className="w-4 h-4 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground">{bus.busNumber}</h3>
-                  <span className="text-xs text-muted-foreground">{bus.type}</span>
-                </div>
-              </div>
-              
-              <div className="space-y-1 text-sm">
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <MapPin className="w-3 h-3" />
-                  <span>{bus.currentLocation.placeName}</span>
-                </div>
-                <p className="text-foreground">
-                  <span className="text-muted-foreground">Route:</span> {bus.route.from} → {bus.route.to}
-                </p>
-                <p className="text-foreground">
-                  <span className="text-muted-foreground">Driver:</span> {bus.driver.name}
-                </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Updated: {bus.currentLocation.timestamp.toLocaleTimeString()}
-                </p>
-              </div>
-            </div>
-          </Popup>
-        </Marker>
-      ))}
+      <BusMarkers buses={buses} onBusClick={handleBusClick} />
     </MapContainer>
   );
 }
