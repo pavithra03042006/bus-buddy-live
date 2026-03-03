@@ -32,6 +32,8 @@ export interface Bus {
     busNumber: string;
     replacedAt: Date;
   };
+  // Total number of seats on the bus (used for seat selection UI)
+  totalSeats?: number;
 }
 
 export interface Booking {
@@ -44,6 +46,8 @@ export interface Booking {
   toStop: string;
   date: Date;
   seatCount: number;
+  // Optional list of specific seat identifiers (like ['1','2','3'])
+  seatNumbers?: string[];
   status: 'confirmed' | 'cancelled' | 'completed';
   bookedAt: Date;
   totalFare: number;

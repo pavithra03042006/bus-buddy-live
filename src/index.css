@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@800;700;600&family=Space+Grotesk:wght@400;500;600&display=swap');
 
 @layer base {
   :root {
@@ -50,6 +51,12 @@
     --overlay: 222 47% 11%;
     --overlay-foreground: 0 0% 100%;
 
+  /* Design-specific neon tokens */
+  --neon-cyan: 187 100% 50%; /* #00d9ff */
+  --neon-lime: 120 70% 40%;
+  --neon-amber: 42 95% 50%;
+  --neon-crimson: 350 85% 45%;
+
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(222 47% 20%), hsl(222 47% 30%));
     --gradient-accent: linear-gradient(135deg, hsl(174 72% 40%), hsl(174 72% 50%));
@@ -66,17 +73,18 @@
   }
 
   .dark {
-    --background: 222 47% 8%;
+    /* Dark theme: deep charcoal / midnight blue */
+    --background: 220 12% 6%; /* deep charcoal */
     --foreground: 210 40% 98%;
 
-    --card: 222 47% 11%;
+    --card: 217 33% 11%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222 47% 11%;
+    --popover: 217 33% 11%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 174 72% 45%;
-    --primary-foreground: 222 47% 11%;
+    --primary: 220 20% 10%; /* midnight blue base */
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 217 33% 17%;
     --secondary-foreground: 210 40% 98%;
@@ -84,24 +92,24 @@
     --muted: 217 33% 17%;
     --muted-foreground: 215 20% 65%;
 
-    --accent: 174 72% 40%;
+    --accent: 187 100% 50%; /* neon cyan accent */
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 350 85% 45%;
+    --destructive-foreground: 0 0% 100%;
 
     --border: 217 33% 20%;
     --input: 217 33% 17%;
-    --ring: 174 72% 45%;
+    --ring: 187 100% 50%;
 
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-background: 218 12% 6%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 210 20% 12%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 210 20% 8%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 210 20% 8%;
+    --sidebar-ring: 187 100% 50%;
   }
 }
 
@@ -112,7 +120,7 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Space Grotesk', 'Inter', sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -122,7 +130,8 @@
 
 @layer components {
   .glass-panel {
-    @apply bg-card/95 backdrop-blur-xl border border-border/50 shadow-xl;
+    @apply bg-card/60 backdrop-blur-2xl border border-border/20 shadow-xl;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.04));
   }
 
   .status-badge {
@@ -196,24 +205,35 @@
 }
 
 .bus-icon {
-  @apply w-10 h-10 rounded-full flex items-center justify-center shadow-lg border-2 border-white;
-  transition: transform 0.3s ease;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 0 18px rgba(0,217,255,0.08);
+  border: 3px solid rgba(255,255,255,0.06);
+  transition: transform 0.28s ease, box-shadow 0.28s ease;
+}
+.bus-icon:hover { transform: scale(1.06); }
+.bus-icon.active { background: hsl(var(--status-active)); color: white; }
+.bus-icon.unavailable { background: hsl(var(--status-unavailable)); color: white; }
+.bus-icon.substitute { background: hsl(var(--status-substitute)); color: white; }
+
+.bus-glow {
+  box-shadow: 0 0 40px rgba(0,217,255,0.18), 0 0 80px rgba(133, 63, 255, 0.06);
 }
 
-.bus-icon:hover {
-  transform: scale(1.1);
-}
-
-.bus-icon.active {
-  background: hsl(var(--status-active));
-}
-
-.bus-icon.unavailable {
-  background: hsl(var(--status-unavailable));
-}
-
-.bus-icon.substitute {
-  background: hsl(var(--status-substitute));
+.pulse-ring {
+  position: absolute;
+  width: 72px;
+  height: 72px;
+  border-radius: 9999px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,217,255,0.08);
+  animation: pulse-ring 1.8s ease-out infinite;
 }
 
 /* Animations */
@@ -248,4 +268,34 @@
 
 .animate-fade-in {
   animation: fade-in 0.3s ease-out forwards;
+}
+
+/* Scoped overrides so the live map (Leaflet) does not overlay app UI panels */
+#live-map-container .leaflet-pane {
+  z-index: 0 !important;
+}
+
+#live-map-container .leaflet-map-pane,
+#live-map-container .leaflet-tile-pane,
+#live-map-container .leaflet-overlay-pane {
+  z-index: 0 !important;
+}
+
+#live-map-container .leaflet-shadow-pane {
+  z-index: 2 !important;
+}
+
+#live-map-container .leaflet-marker-pane {
+  z-index: 4 !important;
+}
+
+#live-map-container .leaflet-popup-pane,
+#live-map-container .leaflet-tooltip-pane {
+  z-index: 6 !important;
+}
+
+/* Ensure the map wrapper creates its own stacking context but stays behind UI */
+#live-map-container {
+  position: relative;
+  z-index: 0;
 }

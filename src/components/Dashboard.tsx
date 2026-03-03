@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBus } from '@/contexts/BusContext';
@@ -8,22 +8,61 @@ import BusDetailsPanel from '@/components/BusDetailsPanel';
 import BookingModal from '@/components/BookingModal';
 import MyBookings from '@/components/MyBookings';
 import { Button } from '@/components/ui/button';
+import AdminPanel from '@/components/AdminPanel';
 import { Bus as BusIcon, LogOut, Ticket, Menu, X, MapPin, List, Radio, CircleOff, Clock } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
-  const { selectedBus, setSelectedBus, isTracking, toggleTracking, lastUpdate } = useBus();
+  const { buses, selectedBus, setSelectedBus, isTracking, toggleTracking, lastUpdate, addBus, removeBus, substituteBus } = useBus();
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [isMyBookingsOpen, setIsMyBookingsOpen] = useState(false);
+  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeView, setActiveView] = useState<'map' | 'list'>('map');
 
   const handleBookTicket = () => {
+    console.debug('handleBookTicket', { selectedBus, user });
+    if (!user) {
+      toast({ title: 'Login required', description: 'Please sign in to book tickets. Redirecting to login...', variant: 'destructive' });
+      // Persist intent so we can reopen the booking modal after login
+      try {
+        if (selectedBus) {
+          sessionStorage.setItem('pending_booking', JSON.stringify({ action: 'book', busId: selectedBus.id }));
+        }
+      } catch {}
+      // Reload to root so Index.tsx shows the AuthPage for unauthenticated users
+      setTimeout(() => {
+        try { window.location.assign('/'); } catch { window.location.reload(); }
+      }, 600);
+      return;
+    }
+
     if (selectedBus) {
       setIsBookingOpen(true);
     }
   };
+
+  // If there was a pending booking intent saved before redirecting to login, open it now
+  React.useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('pending_booking');
+      if (!raw) return;
+      const pending = JSON.parse(raw) as { action?: string; busId?: string } | null;
+      if (!pending) return;
+      if (pending.action === 'book' && pending.busId && user) {
+        const found = buses.find((b) => b.id === pending.busId);
+        if (found) {
+          setSelectedBus(found);
+          setIsBookingOpen(true);
+          sessionStorage.removeItem('pending_booking');
+        }
+      }
+    } catch (e) {
+      // ignore errors
+    }
+  }, [user, buses, setSelectedBus]);
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
@@ -104,6 +143,15 @@ export default function Dashboard() {
             <Ticket className="w-4 h-4 mr-2" />
             <span className="hidden sm:inline">My Bookings</span>
           </Button>
+          {user?.role === 'admin' && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsAdminPanelOpen(true)}
+            >
+              Admin Panel
+            </Button>
+          )}
           
           <div className="flex items-center gap-2 pl-2 border-l border-border">
             <div className="hidden sm:block text-right">
@@ -194,7 +242,7 @@ export default function Dashboard() {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 320, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="w-full lg:w-96 bg-card border-l border-border overflow-y-auto flex flex-col absolute lg:relative inset-0 lg:inset-auto z-20 lg:z-0"
+              className="w-full lg:w-96 bg-card border-l border-border overflow-y-auto flex flex-col absolute lg:relative inset-0 lg:inset-auto z-20 lg:z-40"
             >
               <div className="p-4 border-b border-border flex items-center justify-between">
                 <div>
@@ -216,6 +264,37 @@ export default function Dashboard() {
                   onClose={() => setSelectedBus(null)}
                   onBookTicket={handleBookTicket}
                 />
+
+                {user?.role === 'admin' && (
+                  <div className="mt-4 space-y-2">
+                    <h4 className="text-sm font-medium text-foreground">Admin Controls</h4>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="destructive"
+                        onClick={() => {
+                          if (!selectedBus) return;
+                          const ok = window.confirm(`Remove bus ${selectedBus.busNumber}? This will cancel its bookings.`);
+                          if (!ok) return;
+                          removeBus(selectedBus.id);
+                          setSelectedBus(null);
+                        }}
+                      >
+                        Remove Bus
+                      </Button>
+
+                      <Button
+                        onClick={() => {
+                          if (!selectedBus) return;
+                          const sub = window.prompt('Substitute bus number', `${selectedBus.busNumber}-SUB`);
+                          if (!sub) return;
+                          substituteBus(selectedBus.id, sub);
+                        }}
+                      >
+                        Substitute Bus
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.aside>
           )}
@@ -230,6 +309,8 @@ export default function Dashboard() {
           onClose={() => setIsBookingOpen(false)}
         />
       )}
+
+      <AdminPanel isOpen={isAdminPanelOpen} onClose={() => setIsAdminPanelOpen(false)} />
 
       {/* My Bookings Modal */}
       <MyBookings isOpen={isMyBookingsOpen} onClose={() => setIsMyBookingsOpen(false)} />

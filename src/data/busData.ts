@@ -1,7 +1,7 @@
 import { Bus } from '@/types/bus';
 
 // Tirunelveli area route coordinates for realistic bus movement
-const routeCoordinates: Record<string, [number, number][]> = {
+export const routeCoordinates: Record<string, [number, number][]> = {
   'route-1': [
     [8.7139, 77.7567], // Tirunelveli Junction
     [8.7180, 77.7520], // Palayamkottai
@@ -59,6 +59,7 @@ export const initialBuses: Bus[] = [
     },
     nextStop: 'Palayamkottai',
     status: 'active',
+    totalSeats: 32,
   },
   {
     id: 'bus-2',
@@ -86,6 +87,7 @@ export const initialBuses: Bus[] = [
     },
     nextStop: 'NGO Colony',
     status: 'active',
+    totalSeats: 40,
   },
   {
     id: 'bus-3',
@@ -113,6 +115,7 @@ export const initialBuses: Bus[] = [
     },
     nextStop: 'Thatchanallur',
     status: 'active',
+    totalSeats: 32,
   },
   {
     id: 'bus-4',
@@ -140,6 +143,7 @@ export const initialBuses: Bus[] = [
     },
     nextStop: 'Junction',
     status: 'unavailable',
+    totalSeats: 40,
   },
 ];
 

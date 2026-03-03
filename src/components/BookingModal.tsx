@@ -19,7 +19,7 @@ interface BookingModalProps {
 
 export default function BookingModal({ bus, isOpen, onClose }: BookingModalProps) {
   const { user } = useAuth();
-  const { createBooking } = useBus();
+  const { createBooking, busSeats } = useBus();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -30,17 +30,22 @@ export default function BookingModal({ bus, isOpen, onClose }: BookingModalProps
     date: new Date().toISOString().split('T')[0],
     seatCount: 1,
   });
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+  const maxSelectable = 5; // limit selection to 5 seats in UI
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user) {
+      toast({ title: 'Login required', description: 'Please sign in to book tickets.', variant: 'destructive' });
+      return;
+    }
 
     setIsSubmitting(true);
-    
+
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    const booking = createBooking({
+    const bookingPayload = {
       busId: bus.id,
       userId: user.id,
       passengerName: formData.passengerName,
@@ -48,14 +53,26 @@ export default function BookingModal({ bus, isOpen, onClose }: BookingModalProps
       fromStop: formData.fromStop,
       toStop: formData.toStop,
       date: new Date(formData.date),
-      seatCount: formData.seatCount,
-      status: 'confirmed',
-      totalFare: formData.seatCount * 50, // Base fare calculation
-    });
+      seatCount: selectedSeats.length || formData.seatCount,
+      seatNumbers: selectedSeats.length > 0 ? selectedSeats : undefined,
+      status: 'confirmed' as const,
+      totalFare: (selectedSeats.length || formData.seatCount) * 50, // Base fare calculation
+    };
+
+    console.debug('Booking payload', bookingPayload);
+
+    try {
+      createBooking(bookingPayload);
+    } catch (err) {
+      console.error('createBooking error', err);
+      toast({ title: 'Booking Failed', description: 'Unable to create booking.', variant: 'destructive' });
+      setIsSubmitting(false);
+      return;
+    }
 
     setIsSubmitting(false);
     setStep(3);
-    
+
     toast({
       title: 'Booking Confirmed!',
       description: `Your ticket for ${bus.busNumber} has been booked successfully.`,
@@ -72,6 +89,7 @@ export default function BookingModal({ bus, isOpen, onClose }: BookingModalProps
       date: new Date().toISOString().split('T')[0],
       seatCount: 1,
     });
+    setSelectedSeats([]);
     onClose();
   };
 
@@ -191,29 +209,57 @@ export default function BookingModal({ bus, isOpen, onClose }: BookingModalProps
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="seats">Seats</Label>
-                    <Select
-                      value={formData.seatCount.toString()}
-                      onValueChange={(value) => setFormData({ ...formData, seatCount: parseInt(value) })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {[1, 2, 3, 4, 5].map((num) => (
-                          <SelectItem key={num} value={num.toString()}>
-                            {num} {num === 1 ? 'Seat' : 'Seats'}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="seats">Select Seats (click to toggle)</Label>
+                    <div className="grid grid-cols-8 gap-2 p-2 rounded-lg bg-muted/10">
+                        {Array.from({ length: bus.totalSeats ?? 32 }).map((_, idx) => {
+                        const seatId = (idx + 1).toString();
+                        const booked = (busSeats[bus.id] || []).includes(seatId);
+                        const selected = selectedSeats.includes(seatId);
+
+                        return (
+                          <button
+                            key={seatId}
+                            type="button"
+                            title={`Seat ${seatId}`}
+                            onClick={() => {
+                              if (booked) return;
+                              setSelectedSeats((s) => {
+                                let next: string[];
+                                if (s.includes(seatId)) {
+                                  next = s.filter((x) => x !== seatId);
+                                } else {
+                                  if (s.length >= maxSelectable) return s;
+                                  next = [...s, seatId];
+                                }
+                                setFormData((f) => ({ ...f, seatCount: next.length }));
+                                return next;
+                              });
+                            }}
+                            className={cn(
+                              'px-2 py-1 rounded text-xs font-medium transition-colors',
+                              booked
+                                ? 'bg-status-unavailable/20 text-status-unavailable cursor-not-allowed'
+                                : selected
+                                ? 'bg-accent text-accent-foreground'
+                                : 'bg-secondary text-secondary-foreground hover:bg-accent/5'
+                            )}
+                            disabled={booked}
+                          >
+                            {seatId}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-2">
+                      Selected: {selectedSeats.length} / {maxSelectable}
+                    </div>
                   </div>
                 </div>
 
                 <Button
                   className="w-full"
                   onClick={() => setStep(2)}
-                  disabled={!formData.fromStop || !formData.toStop}
+                  disabled={!formData.fromStop || !formData.toStop || selectedSeats.length === 0}
                 >
                   Continue
                 </Button>
@@ -262,11 +308,16 @@ export default function BookingModal({ bus, isOpen, onClose }: BookingModalProps
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Seats</span>
-                      <span>{formData.seatCount}</span>
+                      <span>{selectedSeats.length || formData.seatCount}</span>
                     </div>
+                    {selectedSeats.length > 0 && (
+                      <div className="text-xs text-muted-foreground">
+                        Selected Seats: {selectedSeats.join(', ')}
+                      </div>
+                    )}
                     <div className="flex justify-between pt-2 border-t border-border font-medium">
                       <span>Total Fare</span>
-                      <span className="text-accent">₹{formData.seatCount * 50}</span>
+                      <span className="text-accent">₹{(selectedSeats.length || formData.seatCount) * 50}</span>
                     </div>
                   </div>
                 </div>

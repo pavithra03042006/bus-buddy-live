@@ -126,6 +126,9 @@ export default function MyBookings({ isOpen, onClose }: MyBookingsProps) {
                           <Users className="w-4 h-4" />
                           <span>{booking.seatCount} {booking.seatCount === 1 ? 'Seat' : 'Seats'}</span>
                         </div>
+                        {booking.seatNumbers && booking.seatNumbers.length > 0 && (
+                          <div className="text-sm text-muted-foreground">Seats: {booking.seatNumbers.join(', ')}</div>
+                        )}
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Clock className="w-4 h-4" />
                           <span>Booked: {new Date(booking.bookedAt).toLocaleString()}</span>

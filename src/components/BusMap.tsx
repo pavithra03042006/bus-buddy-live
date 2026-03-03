@@ -3,6 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useBus } from '@/contexts/BusContext';
 import { Bus } from '@/types/bus';
+import { routeCoordinates } from '@/data/busData';
 
 // Fix for default marker icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -157,6 +158,7 @@ export default function BusMap({ onBusSelect }: BusMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
+  const polylinesRef = useRef<Map<string, L.Polyline>>(new Map());
   const [mapReady, setMapReady] = React.useState(false);
 
   // Initialize map
@@ -183,6 +185,74 @@ export default function BusMap({ onBusSelect }: BusMapProps) {
     // Add zoom control to bottom right
     map.zoomControl.setPosition('bottomright');
 
+    // Draw polylines for each route using an SVG linearGradient (cyan -> violet)
+    try {
+      // helper: ensure <defs> exists in the map's SVG so we can add gradients
+      const ensureDefs = (m: L.Map) => {
+        const container = m.getContainer();
+        const svg = container.querySelector('svg');
+        if (!svg) return null;
+        let defs = svg.querySelector('defs');
+        if (!defs) {
+          defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+          svg.prepend(defs);
+        }
+        return defs as SVGDefsElement;
+      };
+
+      const defs = ensureDefs(map);
+
+      Object.entries(routeCoordinates).forEach(([routeId, coords]) => {
+        if (!coords || coords.length === 0) return;
+
+        // create gradient element for this route if it doesn't exist
+        if (defs && !defs.querySelector(`#route-gradient-${routeId}`)) {
+          const grad = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+          grad.setAttribute('id', `route-gradient-${routeId}`);
+          grad.setAttribute('x1', '0%');
+          grad.setAttribute('y1', '0%');
+          grad.setAttribute('x2', '100%');
+          grad.setAttribute('y2', '0%');
+          grad.setAttribute('gradientUnits', 'userSpaceOnUse');
+
+          const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+          stop1.setAttribute('offset', '0%');
+          stop1.setAttribute('stop-color', '#06b6d4'); // cyan-ish
+
+          const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+          stop2.setAttribute('offset', '100%');
+          stop2.setAttribute('stop-color', '#8b5cf6'); // violet-ish
+
+          grad.appendChild(stop1);
+          grad.appendChild(stop2);
+          defs.appendChild(grad);
+        }
+
+        // create polyline and then set its stroke to the gradient
+        const poly = L.polyline(coords as L.LatLngExpression[], {
+          weight: 4,
+          opacity: 0.95,
+          smoothFactor: 1,
+        }).addTo(map);
+
+        try {
+          const path = (poly as any).getElement ? (poly as any).getElement() : null;
+          if (path) {
+            path.setAttribute('stroke', `url(#route-gradient-${routeId})`);
+            path.setAttribute('stroke-linecap', 'round');
+          }
+        } catch (e) {
+          // ignore if we can't set attributes
+        }
+
+        // store for cleanup or future toggling
+        polylinesRef.current.set(routeId, poly);
+      });
+    } catch (err) {
+      // ignore drawing errors
+      // console.warn('Failed to draw route polylines', err);
+    }
+
     // Prevent map clicks from closing the booking details panel
     map.on('click', (e: L.LeafletMouseEvent) => {
       L.DomEvent.stopPropagation(e.originalEvent);
@@ -195,6 +265,12 @@ export default function BusMap({ onBusSelect }: BusMapProps) {
 
     return () => {
       if (mapRef.current) {
+        // remove polylines
+        polylinesRef.current.forEach((poly) => {
+          try { poly.remove(); } catch {}
+        });
+        polylinesRef.current.clear();
+
         mapRef.current.remove();
         mapRef.current = null;
         setMapReady(false);
@@ -276,10 +352,12 @@ export default function BusMap({ onBusSelect }: BusMapProps) {
   }, [selectedBus?.id]);
 
   return (
-    <div 
-      ref={mapContainerRef} 
-      className="w-full h-full rounded-lg"
-      style={{ background: '#e5e7eb' }}
-    />
+    <div id="live-map-container" className="relative z-0 w-full h-full rounded-lg overflow-hidden">
+      <div
+        ref={mapContainerRef}
+        className="w-full h-full"
+        style={{ background: '#e5e7eb' }}
+      />
+    </div>
   );
 }

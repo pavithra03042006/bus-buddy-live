@@ -21,7 +21,10 @@ export default function AuthPage({ onSuccess }: AuthPageProps) {
     email: '',
     password: '',
     phone: '',
+    role: 'passenger' as 'passenger' | 'admin',
   });
+  const [signupComplete, setSignupComplete] = useState(false);
+  const [createdEmail, setCreatedEmail] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,13 +47,23 @@ export default function AuthPage({ onSuccess }: AuthPageProps) {
           });
         }
       } else {
-        const success = await signup(formData.name, formData.email, formData.password, formData.phone);
+        const success = await signup(
+          formData.name,
+          formData.email,
+          formData.password,
+          formData.phone,
+          formData.role
+        );
         if (success) {
           toast({
             title: 'Account Created!',
-            description: 'Your account has been created successfully.',
+            description: 'Your account has been created successfully. Please proceed to sign in when ready.',
           });
-          onSuccess();
+          // Stay on a signup confirmation screen and avoid auto-login.
+          setSignupComplete(true);
+          setCreatedEmail(formData.email);
+          // clear password field for safety
+          setFormData((f) => ({ ...f, password: '' }));
         } else {
           toast({
             title: 'Signup Failed',
@@ -168,6 +181,28 @@ export default function AuthPage({ onSuccess }: AuthPageProps) {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {signupComplete && !isLogin ? (
+              <div className="p-6 rounded-lg bg-muted/10 border border-border">
+                <h3 className="text-lg font-medium mb-2">Account created</h3>
+                <p className="text-sm text-muted-foreground mb-4">Your account <strong>{createdEmail}</strong> was created successfully.</p>
+                <div className="flex gap-2">
+                  <Button onClick={() => {
+                    // proceed to sign in view and prefill email
+                    setIsLogin(true);
+                    setSignupComplete(false);
+                    setFormData((f) => ({ ...f, email: createdEmail, password: '' }));
+                  }}>
+                    Proceed to Sign In
+                  </Button>
+                  <Button variant="outline" onClick={() => {
+                    // stay on page but allow user to copy email or close
+                    setSignupComplete(false);
+                  }}>
+                    Back
+                  </Button>
+                </div>
+              </div>
+            ) : null}
             {!isLogin && (
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
@@ -181,6 +216,34 @@ export default function AuthPage({ onSuccess }: AuthPageProps) {
                     className="pl-10"
                     required={!isLogin}
                   />
+                </div>
+              </div>
+            )}
+
+            {!isLogin && (
+              <div className="space-y-2">
+                <Label>Account Type</Label>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="role"
+                      value="passenger"
+                      checked={formData.role === 'passenger'}
+                      onChange={() => setFormData({ ...formData, role: 'passenger' })}
+                    />
+                    <span className="text-sm">Passenger</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="role"
+                      value="admin"
+                      checked={formData.role === 'admin'}
+                      onChange={() => setFormData({ ...formData, role: 'admin' })}
+                    />
+                    <span className="text-sm">Admin (demo)</span>
+                  </label>
                 </div>
               </div>
             )}
@@ -250,7 +313,10 @@ export default function AuthPage({ onSuccess }: AuthPageProps) {
             <p className="text-muted-foreground">
               {isLogin ? "Don't have an account?" : 'Already have an account?'}
               <button
-                onClick={() => setIsLogin(!isLogin)}
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setSignupComplete(false);
+                }}
                 className="ml-2 text-accent font-medium hover:underline"
               >
                 {isLogin ? 'Sign up' : 'Sign in'}

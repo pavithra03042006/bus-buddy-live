@@ -5,7 +5,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  signup: (name: string, email: string, password: string, phone?: string) => Promise<boolean>;
+  signup: (name: string, email: string, password: string, phone?: string, role?: User['role']) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -32,11 +32,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Demo login - allow any email/password for testing
+    // If credentials indicate an admin (convenience rule for demo)
+    const isAdmin = email === 'admin@bus.com' || password === 'admin' || email.includes('admin');
     const demoUser: User = {
       id: `user-${Date.now()}`,
       email,
       name: email.split('@')[0],
-      role: 'passenger',
+      role: isAdmin ? 'admin' : 'passenger',
     };
     setUser(demoUser);
     localStorage.setItem('bus_tracker_user', JSON.stringify(demoUser));
@@ -44,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signup = useCallback(
-    async (name: string, email: string, password: string, phone?: string): Promise<boolean> => {
+    async (name: string, email: string, password: string, phone?: string, role: User['role'] = 'passenger'): Promise<boolean> => {
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 500));
 
@@ -57,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         name,
         phone,
-        role: 'passenger',
+        role,
       };
 
       mockUsers.set(email, { user: newUser, password });
